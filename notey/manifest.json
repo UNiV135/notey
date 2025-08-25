@@ -1,9 +1,0 @@
-{
-	"name": "UNiV & KazumiLocks Project",
-	"short_name": "Notey",
-	"start_url": ".",
-	"display": "standalone",
-	"background_color": "#ffffff",
-	"description": "Private notes app for UNiV & KazumiLocks",
-	"icons": []
-}
