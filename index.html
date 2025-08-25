@@ -117,17 +117,18 @@
       const localData = localStorage.getItem('notey-data-'+uid);
       if(localData){
         data = JSON.parse(localData);
-        currentPage = Object.keys(data)[0] || null;
-        renderPages();
-        renderPage();
       }
       database.ref('users/' + uid + '/pages').once('value').then(snapshot => {
         if(snapshot.exists()){
           data = snapshot.val();
-          currentPage = Object.keys(data)[0] || currentPage;
-          renderPages();
-          renderPage();
         }
+        currentPage = Object.keys(data)[0] || null;
+        renderPages();
+        renderPage();
+      }).catch(err => {
+        currentPage = Object.keys(data)[0] || null;
+        renderPages();
+        renderPage();
       });
     }
 
