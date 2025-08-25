@@ -18,16 +18,10 @@
     h2#pageTitle { border-bottom: 2px solid black; padding-bottom: 4px; color: black; font-weight: bold; }
     button { margin: 5px 0; background: black; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     button:hover { background: #333; }
-
-    /* Popup styles */
-    #popupOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 999; }
-    #popup { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-    #popup button { margin: 10px; }
-
-    /* App-like feel */
-    @media (display-mode: standalone) {
-      body { height: 100%; }
-    }
+    #popupOverlay, #loginOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 999; }
+    #popup, #loginPopup { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+    #popup button, #loginPopup button { margin: 10px; }
+    @media (display-mode: standalone) { body { height: 100%; } }
   </style>
   <link rel="manifest" href="manifest.json">
 </head>
@@ -39,6 +33,8 @@
     <hr>
     <button onclick="exportData()">Export</button>
     <input type="file" id="importFile" onchange="importData(event)" />
+    <hr>
+    <button id="loginBtn" onclick="showLogin()">Login with Google</button>
   </div>
   <div id="content">
     <h1 id="mainTitle">UNiV & KazumiLocks Project</h1>
@@ -47,7 +43,6 @@
     <button onclick="newBlock()">+ Block</button>
   </div>
 
-  <!-- Popup -->
   <div id="popupOverlay">
     <div id="popup">
       <p>Are you sure you want to delete this page?</p>
@@ -56,12 +51,82 @@
     </div>
   </div>
 
+  <div id="loginOverlay">
+    <div id="loginPopup">
+      <p>Please select a Google account to login</p>
+      <button onclick="login()">Continue with Google</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCCXTHtDhmwvmQ5Znr0jVaZf0jlVP0uvDs",
+      authDomain: "univ-809cb.firebaseapp.com",
+      databaseURL: "https://univ-809cb-default-rtdb.firebaseio.com",
+      projectId: "univ-809cb",
+      storageBucket: "univ-809cb.appspot.com",
+      messagingSenderId: "222171401581",
+      appId: "1:222171401581:web:8db17bf2ab448b09265e64",
+      measurementId: "G-W5Z036W0WM"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(app);
+    const auth = firebase.auth(app);
+
+    function showLogin(){ document.getElementById('loginOverlay').style.display='flex'; }
+
+    async function login(){
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await auth.signInWithPopup(provider);
+        if(result.user){
+          document.getElementById('loginBtn').style.display='none';
+          document.getElementById('loginOverlay').style.display='none';
+          loadUserData(result.user.uid);
+        }
+      } catch(error) {
+        alert('Login failed: '+error.message);
+        console.error('Login error:', error);
+      }
+    }
+
+    function loadUserData(uid){
+      const userRef = database.ref('users/' + uid);
+      userRef.once('value').then(snapshot => {
+        if(snapshot.exists()){
+          data = snapshot.val();
+          currentPage = Object.keys(data)[0] || null;
+        }
+        renderPages();
+        renderPage();
+      });
+
+      userRef.on('value', snapshot => {
+        if(snapshot.exists()){
+          data = snapshot.val();
+          currentPage = currentPage || Object.keys(data)[0] || null;
+          renderPages();
+          renderPage();
+        }
+      });
+
+      window.save = function(){
+        localStorage.setItem('notey-data', JSON.stringify(data));
+        renderPages();
+        renderPage();
+        userRef.set(data);
+      }
+    }
+  </script>
+
   <script>
     let data = JSON.parse(localStorage.getItem('notey-data')||'{}');
-    let currentPage = null;
+    let currentPage = Object.keys(data)[0] || null;
     let pendingDeleteId = null;
-
-    function save(){ localStorage.setItem('notey-data', JSON.stringify(data)); }
 
     function renderPages(){
       const pagesDiv = document.getElementById('pages');
@@ -70,47 +135,24 @@
         const div=document.createElement('div');
         div.className='page'+(id===currentPage?' active':'');
         div.onclick=()=>openPage(id);
-
         const span=document.createElement('span');
         span.textContent=data[id].title;
-
         const del=document.createElement('span');
         del.textContent='X';
         del.className='delete-btn';
-        del.onclick=(e)=>{ 
-          e.stopPropagation(); 
-          showPopup(id);
-        };
-
+        del.onclick=(e)=>{ e.stopPropagation(); showPopup(id); };
         div.appendChild(span);
         div.appendChild(del);
         pagesDiv.appendChild(div);
       });
     }
 
-    function showPopup(id){
-      pendingDeleteId = id;
-      document.getElementById('popupOverlay').style.display='flex';
-    }
-
-    function confirmDelete(yes){
-      document.getElementById('popupOverlay').style.display='none';
-      if(yes && pendingDeleteId){
-        deletePage(pendingDeleteId);
-      }
-      pendingDeleteId = null;
-    }
-
-    function newPage(){
-      const id=Date.now().toString();
-      data[id]={title:'Untitled',blocks:[]};
-      currentPage=id; save(); renderPages(); renderPage();
-    }
-
-    function openPage(id){ currentPage=id; save(); renderPages(); renderPage(); }
-
+    function showPopup(id){ pendingDeleteId = id; document.getElementById('popupOverlay').style.display='flex'; }
+    function confirmDelete(yes){ document.getElementById('popupOverlay').style.display='none'; if(yes && pendingDeleteId){ deletePage(pendingDeleteId); } pendingDeleteId = null; }
+    function newPage(){ const id=Date.now().toString(); data[id]={title:'Untitled',blocks:[]}; currentPage=id; save(); }
+    function openPage(id){ currentPage=id; save(); }
     function renderPage(){
-      if(!currentPage) return;
+      if(!currentPage || !data[currentPage]) return;
       const page=data[currentPage];
       document.getElementById('pageTitle').textContent=page.title;
       const blocksDiv=document.getElementById('blocks');
@@ -121,53 +163,13 @@
         div.contentEditable=true;
         div.innerHTML=b.text;
         div.oninput=()=>{ b.text=div.innerHTML; save(); };
-        div.addEventListener("keydown", e => {
-          if(e.key==="Enter" && !e.shiftKey){
-            e.preventDefault();
-            document.execCommand("insertParagraph");
-          }
-        });
+        div.addEventListener("keydown", e => { if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); document.execCommand("insertParagraph"); }});
         blocksDiv.appendChild(div);
       });
     }
 
-    function newBlock(){
-      if(!currentPage) return;
-      data[currentPage].blocks.push({text:''});
-      save(); renderPage();
-    }
-
-    function updateTitle(){
-      if(!currentPage) return;
-      data[currentPage].title=document.getElementById('pageTitle').textContent;
-      save(); renderPages();
-    }
-
-    function deletePage(id){
-      delete data[id];
-      if(currentPage===id) currentPage=null;
-      save(); renderPages(); renderPage();
-    }
-
-    function exportData(){
-      const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob);
-      a.download='notey-export.json';
-      a.click();
-    }
-
-    function importData(event){
-      const file=event.target.files[0];
-      const reader=new FileReader();
-      reader.onload=e=>{
-        data=JSON.parse(e.target.result);
-        save(); renderPages();
-      };
-      reader.readAsText(file);
-    }
-
-    renderPages();
-  </script>
-</body>
-</html>
+    function newBlock(){ if(!currentPage) return; data[currentPage].blocks.push({text:''}); save(); }
+    function updateTitle(){ if(!currentPage) return; data[currentPage].title=document.getElementById('pageTitle').textContent; save(); }
+    function deletePage(id){ delete data[id]; if(currentPage===id) currentPage=Object.keys(data)[0] || null; save(); }
+    function exportData(){ const blob=new Blob([JSON.stringify(data)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='notey-export.json'; a.click(); }
+    function importData(event){ const file=event.target.files[0]; const reader=new FileReader(); reader.onload=e=>{
