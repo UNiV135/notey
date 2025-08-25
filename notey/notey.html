@@ -1,0 +1,47 @@
+To make this shareable between your PC in Malaysia and your wife's PC in Indonesia, we’ll turn this into a **self-hosted web app** that you can both open over the internet. Here’s the first step (Option 1): setting it up as a simple local web server.
+
+---
+
+### ✅ Step 1: Save your project files
+1. Create a new folder on your computer, e.g. `notey-app`.
+2. Save your `index.html` (the code you already have) inside this folder.
+3. In the same folder, create a `manifest.json` file with this content:
+   ```json
+   {
+     "name": "UNiV & KazumiLocks Project",
+     "short_name": "Notey",
+     "start_url": ".",
+     "display": "standalone",
+     "background_color": "#ffffff",
+     "description": "Private notes app for UNiV & KazumiLocks",
+     "icons": []
+   }
+   ```
+
+---
+
+### ✅ Step 2: Run a local server
+1. Open **Visual Studio Code**.
+2. Install the extension **Live Server** (by Ritwick Dey).
+3. Right-click on `index.html` → **Open with Live Server**.
+4. You’ll now see your app running at something like:
+   ```
+   http://127.0.0.1:5500/
+   ```
+
+This makes it work like a proper web app instead of just opening as a file.
+
+---
+
+### ✅ Step 3: Access from another PC (LAN first)
+- If your wife is on the same WiFi/LAN (for testing), she can enter your **local IP address** + port in her browser.
+   Example:
+   ```
+   http://192.168.0.5:5500/
+   ```
+
+---
+
+👉 Next step (to make it work **across countries**, Malaysia ↔ Indonesia), you’d need to put this app on a small **cloud server** (like Netlify, Vercel, or a cheap VPS). Then you’d both access it with HTTPS safely.
+
+Do you want me to guide you through **putting this online for just you two** (with a password, so nobody else can access it)? 🔒
