@@ -19,6 +19,7 @@
     button { margin: 5px 0; background: black; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     button:hover { background: #333; }
     #loginBtn, #logoutBtn { margin-top: 10px; width: 100%; }
+    #accountLogo { width: 32px; height: 32px; border-radius: 50%; margin-top: 10px; display: none; }
 
     #popupOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 999; }
     #popup { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
@@ -32,6 +33,7 @@
     <div id="authSection">
       <button id="loginBtn">Login with Google</button>
       <button id="logoutBtn" style="display:none">Logout</button>
+      <img id="accountLogo" />
     </div>
     <hr>
     <div id="pages"></div>
@@ -74,6 +76,7 @@
 
     const loginBtn = document.getElementById("loginBtn");
     const logoutBtn = document.getElementById("logoutBtn");
+    const accountLogo = document.getElementById("accountLogo");
 
     loginBtn.onclick = () => {
       const provider = new firebase.auth.GoogleAuthProvider();
@@ -86,11 +89,14 @@
       if (user) {
         loginBtn.style.display = "none";
         logoutBtn.style.display = "block";
+        accountLogo.src = user.photoURL;
+        accountLogo.style.display = "block";
         currentUserId = user.uid;
         loadUserData(user.uid);
       } else {
         loginBtn.style.display = "block";
         logoutBtn.style.display = "none";
+        accountLogo.style.display = "none";
         currentUserId = null;
         data = {};
         currentPage = null;
@@ -114,18 +120,15 @@
     }
 
     function loadUserData(uid){
+      currentUserId = uid;
       const localData = localStorage.getItem('notey-data-'+uid);
-      if(localData){
-        data = JSON.parse(localData);
-      }
+      if(localData){ data = JSON.parse(localData); }
       database.ref('users/' + uid + '/pages').once('value').then(snapshot => {
-        if(snapshot.exists()){
-          data = snapshot.val();
-        }
+        if(snapshot.exists()){ data = snapshot.val(); }
         currentPage = Object.keys(data)[0] || null;
         renderPages();
         renderPage();
-      }).catch(err => {
+      }).catch(() => {
         currentPage = Object.keys(data)[0] || null;
         renderPages();
         renderPage();
